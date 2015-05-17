@@ -180,6 +180,7 @@ class Selector(object):
         self.items = self.get_items(word)
         if (self.prev_word and word != self.prev_word) or self.prev_length != len(self.items):
             self.selected = 0
+            self.shift_y = 0
         self.prev_length = len(self.items)
         self.print_list(
             item_transformator=lambda x: x[0:self.width],

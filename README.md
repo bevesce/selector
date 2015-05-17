@@ -32,9 +32,9 @@ Inside *selector* you can use arrows to navigate and move caret. Moving caret an
 
 - `make_fuzzy_matcher_from_list` - return function that will return items from list that fuzzy match text typed by user
 - `append_msg` - given other `get_items` and `msg` appends `msg` to output of `get_items`
-- `prepend_msg` - similiar to `append_msg`
-- `append_msgs` - similiar to `append_msg` but accepts multiple `msg`s
-- `prepend_msgs` - similiar to `append_msgs`
+- `prepend_msg` - similar to `append_msg`
+- `append_msgs` - similar to `append_msg` but accepts multiple `msg`s
+- `prepend_msgs` - similar to `append_msgs`
 
 ### n.py
 
