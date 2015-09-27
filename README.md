@@ -4,7 +4,7 @@ Little utility to select items from list, written in python with dreadful  curse
 
 Albeit it is mostly meant to be used inside other python scripts **selector** can be used as command line utility with pipes. It even provides some options for situations when your terminal won't play nice with combining pipes and curses:
 
-![selector](http://procrastinationlog.net/images/selector.gif)
+![selector](images/selector.gif)
 
 ```
 Usage:
