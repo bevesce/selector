@@ -1,4 +1,5 @@
 #!/usr/bin/python
+from __future__ import print_function
 """
 Usage:
     selector.py
@@ -333,7 +334,7 @@ if __name__ == "__main__":
     import docopt
     import subprocess
     input_text = sys.stdin.read()
-    print input_text
+    print(input_text)
     if not input_text:
         sys.exit(0)
 
@@ -361,12 +362,12 @@ if __name__ == "__main__":
 
     def write_to_file(filepath, text):
         with open(filepath, 'w') as f:
-            print f.write(text + '\n')
-            print text
+            print(f.write(text + '\n'))
+            print(text)
 
     def append_to_file(filepath, text):
         with open(filepath, 'a') as f:
-            print f.write(text + '\n')
+            print(f.write(text + '\n'))
 
     def execute_command(command, selected):
         subprocess.call(command.replace('@', selected), shell=True)
@@ -384,4 +385,4 @@ if __name__ == "__main__":
     if arguments['--echo']:
         execute_command_with_echo(arguments['--echo'], selected)
     if not any(arguments.values()):
-        print selected
+        print(selected)
