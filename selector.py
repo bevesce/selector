@@ -15,63 +15,38 @@ Options:
     -c=<command> --command    Execute unix command with after replacing "@" with selected item
     -e=<command> --echo       Execute unix command by echoing and pipeing selected item
 """
-
 import curses
 import re
 from collections import namedtuple
 
 
-SelectorResult = namedtuple('SelectorResult', ['index', 'typed', 'selected'])
-
-COLOR_SEARCH_BOX = 5  # blue
-COLOR_SELECTION = 6  # magenta
-
-
-def get_terminal_size():
-    # Based on http://stackoverflow.com/questions/566746/how-to-get-console-window-width-in-python
-    import os
-    env = os.environ
-
-    def ioctl_GWINSZ(fd):
-        try:
-            import fcntl
-            import termios
-            import struct
-            cr = struct.unpack('hh', fcntl.ioctl(fd, termios.TIOCGWINSZ, '1234'))
-        except:
-            return
-        return cr
-    cr = ioctl_GWINSZ(0) or ioctl_GWINSZ(1) or ioctl_GWINSZ(2)
-    if not cr:
-        try:
-            fd = os.open(os.ctermid(), os.O_RDONLY)
-            cr = ioctl_GWINSZ(fd)
-            os.close(fd)
-        except:
-            pass
-    if not cr:
-        cr = (env.get('LINES', 25), env.get('COLUMNS', 80))
-    return int(cr[1]), int(cr[0])
+def select(options):
+    selector = Selector(options)
+    return selector.run()
 
 
-def _is_string(s):
-    return isinstance(s, str) or isinstance(s, unicode)
+Selection = namedtuple(
+    'Selection',
+    ['index', 'typed', 'selected', 'options']
+)
 
 
 class Selector(object):
     """return (index of selection, typed text, selected text)."""
+    COLOR_SEARCH_BOX = 5  # blue
+    COLOR_SELECTION = 6  # magenta
     ESCAPE = 27
     ENTER = ord("\n")
     SPACE = ord(" ")
     subitem_prefix = "  "
     separator = ""
     start_list_line = 2
-    empty_result = SelectorResult(None, None, None)
+    empty_result = Selection(None, None, None, None)
 
-    def __init__(self, get_items):
+    def __init__(self, options):
         """
-        get_items is a function that gets what user typed in sel
-        and should return list of item to display in sel
+        options - a function that receives user input
+                  and returns options to select from
         """
         super(Selector, self).__init__()
         self.keys = {
@@ -98,7 +73,7 @@ class Selector(object):
         self.width, self.height = get_terminal_size()
         self.height -= self.start_list_line
         self.chs = []
-        self.get_items = get_items
+        self.options = options
         self.items = []
         self.screen = curses.initscr()
         self.prev_word = None
@@ -122,7 +97,6 @@ class Selector(object):
     def run(self):
         def f(s):
             self.setup()
-            result = self.empty_result
             result = self.take_input()
             self.clear_list()
             return result
@@ -141,10 +115,11 @@ class Selector(object):
                     item = self.items[self.selected]
                 except IndexError:
                     item = None
-                return SelectorResult(
-                    self.selected,
-                    self.chs_to_word(),
-                    item
+                return Selection(
+                    index=self.selected,
+                    typed=self.chs_to_word(),
+                    selected=item,
+                    options=self.items
                 )
             elif x in self.keys:
                 self.keys[x]()
@@ -161,7 +136,7 @@ class Selector(object):
         return ''.join(result)
 
     def update(self):
-        search_color = curses.color_pair(COLOR_SEARCH_BOX)
+        search_color = curses.color_pair(self.COLOR_SEARCH_BOX)
         start = max(self.caret_x - self.width, 0)
         end = min(len(self.chs), start + self.width)
         for i, ch in enumerate(self.chs[start:end]):
@@ -178,16 +153,15 @@ class Selector(object):
     def update_list(self):
         self.clear_list()
         word = self.chs_to_word()
-        self.items = self.get_items(word)
+        self.items = self.options(word)
         if (self.prev_word and word != self.prev_word) or self.prev_length != len(self.items):
             self.selected = 0
             self.shift_y = 0
         self.prev_length = len(self.items)
         self.print_list(
             item_transformator=lambda x: x[0:self.width],
-            subitem_transformator=lambda x: (self.subitem_prefix + x)[0:self.width],
             mark_selected=True
-            )
+        )
 
     def clear_list(self):
         self.print_list(item_transformator=lambda x: " " * self.width)
@@ -195,26 +169,15 @@ class Selector(object):
     def print_list(
         self,
         item_transformator=lambda x: x,
-        subitem_transformator=None,
         mark_selected=False
     ):
-        subitem_transformator = subitem_transformator or item_transformator
         line_y = self.start_list_line
+        selected_style = curses.color_pair(self.COLOR_SELECTION)
         for line_no, item in enumerate(self.items[self.shift_y:self.shift_y + self.height]):
-            selected_style = curses.color_pair(COLOR_SELECTION)
-            style = selected_style if line_no == self.selected - self.shift_y and mark_selected else curses.A_NORMAL
-            subitems = []
-            if not _is_string(item):
-                try:
-                    subitems = item[1:]
-                    item = item[0]
-                except:
-                    pass
+            line_is_selected = line_no == self.selected - self.shift_y and mark_selected
+            style = selected_style if line_is_selected else curses.A_NORMAL
             self.safe_addstr(line_y, 0, item_transformator(item), style)
             line_y += 1
-            for subitem in subitems:
-                self.safe_addstr(line_y, 0, subitem_transformator(subitem))
-                line_y += 1
 
     def safe_addstr(self, y, x, s, style=None):
         try:
@@ -288,44 +251,50 @@ class Selector(object):
             self.shift_y += 1
 
 
-def make_fuzzy_matcher_from_list(selections_list):
+def options_from_list(options):
     def m(w):
         p = re.compile('.*' + ''.join(l + '.*' for l in w))
-        return [e for e in selections_list if p.match(e.lower())]
+        return [o for o in options if p.match(o.lower())]
     return m
 
 
-def prepend_msgs(get_items, msgs):
+def options_by_appending_option(options, *args):
     def m(w):
-        return [msg.format(w) for msg in msgs] + get_items(w)
+        return options(w) + list(args)
     return m
 
 
-def append_msgs(get_items, msgs):
+def options_by_prepending_option(options, *args):
     def m(w):
-        return get_items(w) + [msg.format(w) for msg in msgs]
+        return list(args) + options(w)
     return m
 
 
-def prepend_msg(get_items, msg):
-    def m(w):
-        return [msg.format(w)] + get_items(w)
-    return m
+def get_terminal_size():
+    # Based on http://stackoverflow.com/questions/566746/how-to-get-console-window-width-in-python
+    import os
+    env = os.environ
 
-
-def append_msg(get_items, msg):
-    def m(w):
-        return get_items(w) + [msg.format(w)]
-    return m
-
-
-def select(get_items):
-    qb = Selector(get_items)
-    return qb.run()
-
-
-def select_from_list(items):
-    return select(make_fuzzy_matcher_from_list(items))
+    def ioctl_GWINSZ(fd):
+        try:
+            import fcntl
+            import termios
+            import struct
+            cr = struct.unpack('hh', fcntl.ioctl(fd, termios.TIOCGWINSZ, '1234'))
+        except:
+            return
+        return cr
+    cr = ioctl_GWINSZ(0) or ioctl_GWINSZ(1) or ioctl_GWINSZ(2)
+    if not cr:
+        try:
+            fd = os.open(os.ctermid(), os.O_RDONLY)
+            cr = ioctl_GWINSZ(fd)
+            os.close(fd)
+        except:
+            pass
+    if not cr:
+        cr = (env.get('LINES', 25), env.get('COLUMNS', 80))
+    return int(cr[1]), int(cr[0])
 
 
 if __name__ == "__main__":
@@ -334,7 +303,6 @@ if __name__ == "__main__":
     import docopt
     import subprocess
     input_text = sys.stdin.read()
-    print(input_text)
     if not input_text:
         sys.exit(0)
 
@@ -345,8 +313,8 @@ if __name__ == "__main__":
     sys.__stdin__ = sys.stdin = open('/dev/tty')
     os.dup2(sys.stdin.fileno(), 0)
 
-    r = select_from_list(input_text.splitlines())
-    _, _, selected = r
+    result = select(options_from_list(input_text.splitlines()))
+    selected = result.selected
 
     sys.stdout.flush()
     sys.stderr.flush()
