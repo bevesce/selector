@@ -20,11 +20,11 @@ def find_and_open_note(dirpath):
     if selected_create_new_note:
         filename = result.typed
         if '.' not in filename:
-            filename += default_extension
+            filename += DEFAULT_EXTENSION
     else:
         filename = result.selected
     subprocess.call(
-        ['subl', os.path.join(dirpath, filename)]
+        ['vim', os.path.join(dirpath, filename)]
     )
 
 

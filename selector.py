@@ -20,8 +20,8 @@ import re
 from collections import namedtuple
 
 
-def select(options):
-    selector = Selector(options)
+def select(options, initial_query=''):
+    selector = Selector(options, initial_query)
     return selector.run()
 
 
@@ -43,7 +43,7 @@ class Selector(object):
     start_list_line = 2
     empty_result = Selection(None, None, None, None)
 
-    def __init__(self, options):
+    def __init__(self, options, initial_query=''):
         """
         options - a function that receives user input
                   and returns options to select from
@@ -68,18 +68,19 @@ class Selector(object):
         }
         self.selected = 0
         self.shift_y = 0
-        self.caret_x = 0
+        self.caret_x = len(initial_query)
         self.shift_x = 0
         self.width, self.height = get_terminal_size()
         self.height -= self.start_list_line
-        self.chs = []
+        self.chs = [ord(c) for c in initial_query]
         self.options = options
         self.items = []
         self.screen = curses.initscr()
         self.prev_word = None
         self.prev_length = 0
 
-    def setup(self):
+    def setup(self, s):
+        self.screen = s
         curses.noecho()
         curses.cbreak()
         curses.start_color()
@@ -96,7 +97,7 @@ class Selector(object):
 
     def run(self):
         def f(s):
-            self.setup()
+            self.setup(s)
             result = self.take_input()
             self.clear_list()
             return result
