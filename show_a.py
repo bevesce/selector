@@ -1,3 +1,6 @@
+# I'm trying how to figure out how to make
+# `echo $(ls | python3 selector.py)` work
+
 import os, sys
 import curses
 

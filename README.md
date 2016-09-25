@@ -2,7 +2,7 @@
 
 Little utility to select items from list, written in python with dreadful  curses module.
 
-![selector](images/selector.gif)
+![selector](screenshots/selector.gif)
 
 Inside *selector* you can use arrows to navigate and move caret. Moving caret and deleting words and lines with holding command and alt should work on OSX.
 
