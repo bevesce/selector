@@ -1,3 +1,5 @@
+![icon](icon.png)
+
 # selector
 
 Little utility to select items from list, written in python with dreadful  curses module.
