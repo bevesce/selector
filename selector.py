@@ -20,8 +20,8 @@ import re
 from collections import namedtuple
 
 
-def select(options, initial_query=''):
-    selector = Selector(options, initial_query)
+def select(options, initial_query='', make_complition=None):
+    selector = Selector(options, initial_query, make_complition)
     return selector.run()
 
 
@@ -43,7 +43,7 @@ class Selector(object):
     start_list_line = 2
     empty_result = Selection(None, None, None, None)
 
-    def __init__(self, options, initial_query=''):
+    def __init__(self, options, initial_query='', make_complition=None):
         """
         options - a function that receives user input
                   and returns options to select from
@@ -78,6 +78,7 @@ class Selector(object):
         self.screen = curses.initscr()
         self.prev_word = None
         self.prev_length = 0
+        self.make_complition = make_complition
 
     def setup(self, s):
         self.screen = s
@@ -212,11 +213,8 @@ class Selector(object):
 
     def complete(self):
         item = self.items[self.selected]
-        if not _is_string(item):
-            try:
-                item = item[0]
-            except:
-                pass
+        if self.make_complition:
+            item = self.make_complition(item, self.chs_to_word())
         self.chs = [ord(l) for l in str(item)]
         self.caret_x = len(self.chs)
         self.selected = 0
@@ -255,7 +253,12 @@ class Selector(object):
 def options_from_list(options):
     def m(w):
         p = re.compile('.*' + ''.join(l + '.*' for l in w))
-        return [o for o in options if p.match(o.lower())]
+        matching = [o for o in options if p.match(o.lower())]
+        wlen = len(w)
+        if wlen == 0:
+            return matching
+        matching.sort(key=lambda o: (abs(len(o) - wlen), o))
+        return matching
     return m
 
 
