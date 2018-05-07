@@ -252,12 +252,17 @@ class Selector(object):
 
 def options_from_list(options):
     def m(w):
-        p = re.compile('.*' + ''.join(l + '.*' for l in w))
+        p = re.compile('.*' + ''.join(re.escape(l.lower()) + '.*' for l in w))
         matching = [o for o in options if p.match(o.lower())]
-        wlen = len(w)
-        if wlen == 0:
-            return matching
-        matching.sort(key=lambda o: (abs(len(o) - wlen), o))
+
+        def sort_key(o):
+            if w in o:
+                return (0, o)
+            if w.lower() in o.lower():
+                return (1, o)
+            return (abs(len(o) - len(w) + 2), o)
+
+        matching.sort(key=sort_key)
         return matching
     return m
 
