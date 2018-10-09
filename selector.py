@@ -259,13 +259,13 @@ def options_from_list(options):
 
 def options_by_appending_option(options, *args):
     def m(w):
-        return options(w) + list(args)
+        return options(w) + tuple(args)
     return m
 
 
 def options_by_prepending_option(options, *args):
     def m(w):
-        return list(args) + options(w)
+        return tuple(args) + options(w)
     return m
 
 

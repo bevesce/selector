@@ -33,5 +33,4 @@ def score(text, query):
 def filter(texts, query, key=lambda x: x):
     texts_with_score = ((score(key(t), query), t) for t in texts)
     sorted_texts_with_score = sorted(texts_with_score, reverse=True)
-    print(sorted_texts_with_score)
     return tuple(t for (score, t) in sorted_texts_with_score if score > 0)
